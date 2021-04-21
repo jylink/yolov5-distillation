@@ -279,10 +279,7 @@ def train(hyp, opt, device, tb_writer=None):
         if rank != -1:
             dataloader.sampler.set_epoch(epoch)
         pbar = enumerate(dataloader)
-        if opt.t_weights:
-            logger.info(('\n' + '%10s' * 12) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'total', 'kd_box', 'kd_obj', 'kd_cls', 'kd_total', 'labels', 'img_size'))
-        else:
-            logger.info(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'total', 'labels', 'img_size'))
+        logger.info(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'total', 'labels', 'img_size'))
         if rank in [-1, 0]:
             pbar = tqdm(pbar, total=nb)  # progress bar
         optimizer.zero_grad()
@@ -337,14 +334,10 @@ def train(hyp, opt, device, tb_writer=None):
             # Print
             if rank in [-1, 0]:
                 mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
+                kd_mloss = (kd_mloss * i + kd_loss_items) / (i + 1)
                 mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-                if opt.t_weights:
-                    kd_mloss = (kd_mloss * i + kd_loss_items) / (i + 1)
-                    s = ('%10s' * 2 + '%10.4g' * 10) % (
-                        '%g/%g' % (epoch, epochs - 1), mem, *mloss, *kd_mloss, targets.shape[0], imgs.shape[-1])
-                else:
-                    s = ('%10s' * 2 + '%10.4g' * 6) % (
-                        '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
+                s = ('%10s' * 2 + '%10.4g' * 6) % (
+                    '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
                 pbar.set_description(s)
 
                 # Plot
@@ -384,7 +377,9 @@ def train(hyp, opt, device, tb_writer=None):
                                                  wandb_logger=wandb_logger,
                                                  compute_loss=compute_loss,
                                                  is_coco=is_coco)
-
+                if opt.t_weights:
+                    logger.info(('%10s' * 4) % ('kd_box', 'kd_obj', 'kd_cls', 'kd_total'))
+                    logger.info(('%10.4g' * 4) % (*kd_mloss,))
             # Write
             with open(results_file, 'a') as f:
                 f.write(s + '%10.4g' * 7 % results + '\n')  # append metrics, val_loss
