@@ -101,6 +101,7 @@ def train(hyp, opt, device, tb_writer=None):
     # Load teacher model
     if opt.t_weights:
         print('[KD] Loading teacher model', opt.t_weights)
+        hyp['kd'] = opt.kd_factor
         t_model = torch.load(opt.t_weights, map_location=device)['model']
         t_model.float()
         t_model.train()
@@ -275,7 +276,7 @@ def train(hyp, opt, device, tb_writer=None):
         # dataset.mosaic_border = [b - imgsz, -b]  # height, width borders
 
         mloss = torch.zeros(4, device=device)  # mean losses
-        kd_mloss = torch.zeros(4, device=device)
+        if opt.t_weights: kd_mloss = torch.zeros(4, device=device)
         if rank != -1:
             dataloader.sampler.set_epoch(epoch)
         pbar = enumerate(dataloader)
@@ -550,10 +551,6 @@ if __name__ == '__main__':
     # Hyperparameters
     with open(opt.hyp) as f:
         hyp = yaml.load(f, Loader=yaml.SafeLoader)  # load hyps
-
-    # KD
-    if opt.t_weights:
-        hyp['kd'] = opt.kd_factor
         
     # Train
     logger.info(opt)
