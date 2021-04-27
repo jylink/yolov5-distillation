@@ -1,4 +1,4 @@
-# yolov5-kd
+# yolov5-distillation
 
 yolov5 knowledge distillation (offline)
 
